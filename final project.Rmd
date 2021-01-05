@@ -1,0 +1,264 @@
+---
+title: "Final project"
+author: "Anisha Ganeshkumar"
+date: "01/12/2019"
+output: html_document
+---
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(stringr)
+```
+```{r}
+setwd("~/Datasets/")
+airbnb <- read.csv('airbnb_listings.csv', sep = ';', comment.char = '#', stringsAsFactors = FALSE)
+
+columns = c('ID', 'Host.Name','Host.Since','Host.Acceptance.Rate','Host.Listings.Count','City','State','Market','Country.Code','Country','Latitude','Longitude','Property.Type',
+'Room.Type','Accommodates','Bathrooms','Bedrooms','Amenities','Price','Weekly.Price','Monthly.Price','Security.Deposit',
+'Cleaning.Fee','Number.of.Reviews','Extra.People','Guests.Included','Host.Verifications','Property.Type','Cancellation.Policy','Review.Scores.Rating',
+'Review.Scores.Accuracy','Review.Scores.Checkin','Review.Scores.Cleanliness','Review.Scores.Communication','Review.Scores.Location','Review.Scores.Value',
+'Reviews.per.Month','Features')
+
+airbnb <- airbnb %>% select(columns)
+
+```
+Data Cleaning
+
+```{r}
+#create a function to remove the special charachters from a string
+remove_special_charachters <- function(x) {
+  return(gsub("[^-0-9/.]+", "", x))
+}
+```
+
+```{r}
+# first we will get rid of records with false value (alphabetical value)
+airbnb <- airbnb[!grepl('[[:alpha:] ]', airbnb$Host.Acceptance.Rate),, drop = FALSE]
+# Then we remove the "%" from each record 
+airbnb$Host.Acceptance.Rate <- sapply(airbnb$Host.Acceptance.Rate, remove_special_charachters)
+# Convert the column to a numerical column
+airbnb$Host.Acceptance.Rate<-as.numeric(airbnb$Host.Acceptance.Rate)
+# We convert the column to numerical columns
+airbnb$Host.Listings.Count<-as.numeric(airbnb$Host.Listings.Count)
+#Convert column to numerical column
+airbnb$Accommodates <-as.numeric(airbnb$Accommodates)
+#Convert column to numeric column
+airbnb$Bathrooms <- as.numeric(airbnb$Bathrooms)
+#Convert column to numeric
+airbnb$Bedrooms <- as.numeric(airbnb$Bedrooms)
+```
+
+```{r}
+airbnb$Price <- as.numeric(airbnb$Price)
+airbnb$Weekly.Price <- as.numeric(airbnb$Weekly.Price)
+airbnb$Monthly.Price <- as.numeric(airbnb$Monthly.Price)
+airbnb$Security.Deposit <- as.numeric(airbnb$Security.Deposit)
+airbnb$Cleaning.Fee <- as.numeric(airbnb$Cleaning.Fee)
+airbnb$Number.of.Reviews <- as.numeric(airbnb$Number.of.Reviews)
+airbnb$Extra.People <- as.numeric(airbnb$Extra.People)
+airbnb$Guests.Included <- as.numeric(airbnb$Guests.Included)
+airbnb$Review.Scores.Rating <- as.numeric(airbnb$Review.Scores.Rating)
+airbnb$Review.Scores.Accuracy <- as.numeric(airbnb$Review.Scores.Accuracy)
+airbnb$Review.Scores.Checkin <- as.numeric(airbnb$Review.Scores.Checkin)
+airbnb$Review.Scores.Cleanliness <- as.numeric(airbnb$Review.Scores.Cleanliness)
+airbnb$Review.Scores.Communication <- as.numeric(airbnb$Review.Scores.Communication)
+airbnb$Review.Scores.Location <- as.numeric(airbnb$Review.Scores.Location)
+airbnb$Review.Scores.Value <- as.numeric(airbnb$Review.Scores.Value)
+airbnb$Reviews.per.Month <- as.numeric(airbnb$Reviews.per.Month)
+```
+```{r}
+str(airbnb)
+```
+```{r}
+# remove "_new" term from canclation policy in order to reduce the combinations
+pattern_removal <- function(x){
+    return(str_remove(x, "_new"))
+}
+airbnb$Cancellation.Policy <- sapply(airbnb$Cancellation.Policy, pattern_removal)
+```
+Create new features¶
+For each column we first find the all unique value exist, then we split the the specific column with a delimiter which is necessary (here ","). Next step we loop through the generated splited object and check each record for existing values. If the value exist we assign a 1 to that record with a new colun in airbnb dataframe
+
+```{r}
+pb <- txtProgressBar(min = 0, max = nrow(airbnb), style = 3)
+
+temp = strsplit(as.character(airbnb$Host.Verifications),",")
+
+for(j in 1:length(temp)){
+    lst = temp[[j]]
+    if('email' %in% lst){
+        airbnb[j, 'email'] <- 1
+    }
+    if('reviews' %in% lst){
+        airbnb[j, 'reviews'] <- 1
+    }
+    if('kba' %in% lst){
+        airbnb[j, 'kba'] <- 1
+    }
+    if( 'facebook' %in% lst){
+        airbnb[j, 'facebook'] <- 1
+    }
+    if( 'phone' %in% lst){
+        airbnb[j, 'phone'] <- 1
+    }
+    if( 'government_id' %in% lst){
+        airbnb[j, 'government_id'] <- 1
+    }
+    if( 'jumio' %in% lst){
+        airbnb[j, 'jumio'] <- 1
+    }
+    if( 'work_email' %in% lst){
+        airbnb[j, 'work_email'] <- 1
+    }
+    setTxtProgressBar(pb, j)
+}
+
+close(pb)
+```
+
+```{r}
+pb <- txtProgressBar(min = 0, max = nrow(airbnb), style = 3)
+temp = strsplit(as.character(airbnb$Features),",")
+for(j in 1:length(temp)){
+    lst = temp[[j]]
+    if('Host Has Profile Pic' %in% lst){
+        airbnb[j, 'Host Has Profile Pic'] <- 1
+    }
+    if('Host Identity Verified' %in% lst){
+        airbnb[j, 'Host Identity Verified'] <- 1
+    }
+    if('Is Location Exact' %in% lst){
+        airbnb[j, 'Is Location Exact'] <- 1
+    }
+    if( 'Instant Bookable' %in% lst){
+        airbnb[j, 'Instant Bookable'] <- 1
+    }
+    if( 'Host Is Superhost' %in% lst){
+        airbnb[j, 'Host Is Superhost'] <- 1
+    }
+    if( 'government_id' %in% lst){
+        airbnb[j, 'government_id'] <- 1
+    }
+    if( 'Require Guest Phone Verification' %in% lst){
+        airbnb[j, 'Require Guest Phone Verification'] <- 1
+    }
+    if( 'Require Guest Profile Picture' %in% lst){
+        airbnb[j, 'Require Guest Profile Picture'] <- 1
+    }
+    if( 'Requires License' %in% lst){
+        airbnb[j, 'Requires License'] <- 1
+    }
+    setTxtProgressBar(pb, j)
+}
+
+close(pb)
+```
+
+```{r}
+#Replace missing/empty values on the generated columns to 0
+airbnb[, 38:53][is.na(airbnb[, 38:53])] <- 0
+write.csv(airbnb, 'airbnb_master_table.csv')
+```
+Working with missing values
+
+```{r}
+# Replace missing values with median of the column
+for(i in 1:ncol(airbnb)){
+    if(is.numeric(airbnb[,i])){
+        airbnb[is.na(airbnb[,i]), i] <- median(airbnb[,i], na.rm = TRUE)
+    }
+}
+nums <- unlist(lapply(airbnb, is.numeric))
+cor(airbnb[, nums])
+```
+```{r}
+corheat <- round(cor(airbnb[, nums]),2)
+library(reshape2)
+melted_corheat <- melt(corheat)
+head(melted_corheat)
+```
+```{r}
+library(ggplot2)
+ggplot(data = melted_corheat, aes(x=Var1, y=Var2, fill=value)) + 
+  geom_tile() + theme_classic() + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + xlab('Numerical Variables') + ylab('Numerical Varibles')
+```
+```{r}
+str(airbnb)
+```
+```{r}
+by_country <- airbnb %>% group_by(Country) %>% summarise(mean_price = mean(Price, na.rm = TRUE)) 
+by_country <- by_country[-c(1), ]
+by_country <- by_country[order(by_country$mean_price),]
+```
+Price vs country
+```{r}
+library(ggplot2)
+ggplot(data=by_country, aes(x=Country, y= mean_price)) + geom_bar(stat="identity", fill = 'black') + 
+xlab('Country') + ylab('Mean Price') + theme_classic() + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+Amenities vs ratings
+```{r}
+library(magrittr)
+#Selecting only the required columns
+amenities_df <- airbnb %>%
+  dplyr::select(ID,Amenities,`Review.Scores.Rating`,`Host Is Superhost`)
+amenities_df <- na.omit(amenities_df)
+```
+```{r}
+#changing the amenities column into different columns
+library(data.table)
+setDT(amenities_df)
+amenities_df[, rn := seq_len(.N)]
+long_amenities <- amenities_df[, strsplit(Amenities, ",", fixed = TRUE), by = rn]
+```
+```{r}
+long_amenities[, V1 := stringr::str_trim(stringr::str_replace_all(V1, '["]', ""))]
+amenities_sep <- dcast(long_amenities[!V1 %like% "^translation missing"], rn ~ V1, length, value.var = "rn", fill = 0)
+
+
+amenities_df <- amenities_df[,c(1,3,4,5)]
+final_amenities <- merge(amenities_sep, amenities_df, by = "rn")
+```
+```{r}
+#Seperating highly rated listings
+a_high <- final_amenities %>%
+  filter(final_amenities$`Review.Scores.Rating` >=95) 
+```
+
+
+```{r}
+a_high <- a_high[, !names(a_high) %in% c("rn", "Review.Scores.Rating","ID")] 
+a_high_sum <- colSums(a_high)
+a_high_df <-data.frame("Amenities"= colnames(a_high))
+a_high_df$Sum <- a_high_sum
+a_high_df <- a_high_df[order(a_high_df$Sum),]
+a_high_df <- a_high_df %>%
+  filter(a_high_df$Sum >= 2500)
+```
+```{r}
+ggplot(a_high_df,aes(x=reorder(Amenities,Sum),y = Sum,fill = a))+geom_bar(stat = "identity", fill="steelblue")+coord_flip()+labs(x="Amenities",y="Number of listings",title="Highly rated listings")
+```
+```{r}
+ggplot(airbnb, aes(x=Cleaning.Fee, y=Review.Scores.Cleanliness)) + geom_point() + labs(title = "Cleaning fee vs cleanliness score")
+```
+```{r}
+plot <- summarise(group_by(airbnb,Cancellation.Policy,`Host Is Superhost`), count.plot = n())
+plot$`Host Is Superhost`<-ifelse(plot$`Host Is Superhost`=="1",TRUE,FALSE)
+plot <- plot[-1,]
+ggplot(plot, aes(x=Cancellation.Policy,y = count.plot ,fill=`Host Is Superhost`)) + geom_bar(stat = "identity")
+```
+```{r}
+plot2 <- summarise(group_by(airbnb,Country,Property.Type),count.plot2 = n())
+plot2$Percentage <- (plot2$count.plot2 / sum(plot2$count.plot2))*100
+
+ggplot(plot2,aes(x=Country,y=Percentage), fill= Property.Type)+geom_bar(stat="identity")
+```
+```{r}
+airbnb$Superhost<- ifelse(airbnb$`Host Is Superhost`=="1",TRUE,FALSE)
+ggplot(airbnb,aes(x= Host.Acceptance.Rate,y=Review.Scores.Rating))+geom_point(aes(colour=Superhost))+labs(title="What it takes to be a superhost")                                   
+```
+```{r}
+library(alluvial)
+filteredColumns <- airbnb %>% select(`Instant Bookable`,Cancellation.Policy, Room.Type,`Host Is Superhost`)
+```
